@@ -13,4 +13,10 @@
   <f:entry title="Name" field="name">
     <f:textbox />
   </f:entry>
+  <f:entry title="Jobs" field="selectedJobs">
+    <j:forEach var="job" items="${descriptor.doFillSelectedJobs()}" >
+      <f:checkbox name="selectedJobs" json="${job.value}" checked="${instance.isSelectedJob(job.value)}"/>
+      <label class="attach-previous">${job.name}</label>
+    </j:forEach>
+  </f:entry>
 </j:jelly>

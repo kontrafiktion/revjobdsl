@@ -2,12 +2,13 @@ package de.betathoughts.revjobdsl;
 import hudson.Launcher;
 import hudson.Extension;
 import hudson.FilePath;
+import hudson.Util;
+import hudson.model.*;
 import hudson.util.FormValidation;
-import hudson.model.AbstractProject;
-import hudson.model.Run;
-import hudson.model.TaskListener;
 import hudson.tasks.Builder;
 import hudson.tasks.BuildStepDescriptor;
+import hudson.util.ListBoxModel;
+import jenkins.model.Jenkins;
 import jenkins.tasks.SimpleBuildStep;
 import net.sf.json.JSONObject;
 import org.kohsuke.stapler.DataBoundConstructor;
@@ -16,6 +17,7 @@ import org.kohsuke.stapler.QueryParameter;
 
 import javax.servlet.ServletException;
 import java.io.IOException;
+import java.util.*;
 
 /**
  * Sample {@link Builder}.
@@ -37,10 +39,13 @@ public class HelloWorldBuilder extends Builder implements SimpleBuildStep {
 
     private final String name;
 
+    private final List<String> selectedJobs;
+
     // Fields in config.jelly must match the parameter names in the "DataBoundConstructor"
     @DataBoundConstructor
-    public HelloWorldBuilder(String name) {
+    public HelloWorldBuilder(String name, List<String> selectedJobs) {
         this.name = name;
+        this.selectedJobs = Util.fixNull(selectedJobs);
     }
 
     /**
@@ -50,17 +55,36 @@ public class HelloWorldBuilder extends Builder implements SimpleBuildStep {
         return name;
     }
 
+    public List<String> getSelectedJobs() {
+        return selectedJobs;
+    }
+
+    public boolean isSelectedJob(String name) {
+        // TODO: map
+        return selectedJobs.contains(name);
+    }
+
     @Override
     public void perform(Run<?,?> build, FilePath workspace, Launcher launcher, TaskListener listener) {
         // This is where you 'build' the project.
         // Since this is a dummy, we just say 'hello world' and call that a build.
 
+        Collection<View> views= Jenkins.getInstance().getViews();
+        for (View aView : views) {
+            listener.getLogger().println("View: " + aView.getDisplayName());
+        }
+
+        List<Job> jobs = Jenkins.getInstance().getAllItems(Job.class);
+        for (Job aJob : jobs) {
+            listener.getLogger().println("Job: " + aJob.getDisplayName());
+        }
         // This also shows how you can consult the global configuration of the builder
         if (getDescriptor().getUseFrench())
             listener.getLogger().println("Bonjour, "+name+"!");
         else
             listener.getLogger().println("Hello, "+name+"!");
     }
+
 
     // Overridden for better type safety.
     // If your plugin doesn't really define any property on Descriptor,
@@ -80,6 +104,7 @@ public class HelloWorldBuilder extends Builder implements SimpleBuildStep {
      */
     @Extension // This indicates to Jenkins that this is an implementation of an extension point.
     public static final class DescriptorImpl extends BuildStepDescriptor<Builder> {
+
         /**
          * To persist global configuration information,
          * simply store it in a field and call save().
@@ -118,6 +143,8 @@ public class HelloWorldBuilder extends Builder implements SimpleBuildStep {
             return FormValidation.ok();
         }
 
+        // public FormValidation doChe
+
         public boolean isApplicable(Class<? extends AbstractProject> aClass) {
             // Indicates that this builder can be used with all kinds of project types 
             return true;
@@ -141,6 +168,11 @@ public class HelloWorldBuilder extends Builder implements SimpleBuildStep {
             return super.configure(req,formData);
         }
 
+        public List<String> getSelectedJobs() {
+            return null;
+        }
+
+
         /**
          * This method returns true if the global configuration says we should speak French.
          *
@@ -150,6 +182,22 @@ public class HelloWorldBuilder extends Builder implements SimpleBuildStep {
         public boolean getUseFrench() {
             return useFrench;
         }
+
+        public ListBoxModel doFillSelectedJobs() {
+            ListBoxModel result = new ListBoxModel();
+            List<Job> jobs = Jenkins.getInstance().getAllItems(Job.class);
+            for (Job aJob : jobs) {
+                result.add(aJob.getDisplayName());
+            }
+            return result;
+        }
+
+        public FormValidation doCheckSelectedJobs(@QueryParameter String selectedJobs)
+                throws IOException, ServletException {
+            return FormValidation.ok();
+        }
+
+
     }
 }
 
